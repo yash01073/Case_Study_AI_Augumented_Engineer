@@ -1,10 +1,12 @@
 package com.taskbridge.common.api;
 
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.persistence.OptimisticLockException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -47,6 +49,15 @@ public class GlobalExceptionHandler {
         return problem;
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ProblemDetail handleIllegalArgument(IllegalArgumentException ex) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
+        problem.setTitle("Invalid Request");
+        problem.setType(URI.create("https://taskbridge.io/errors/invalid-request"));
+        problem.setDetail(ex.getMessage());
+        return problem;
+    }
+
     @ExceptionHandler(IllegalStateException.class)
     public ProblemDetail handleIllegalState(IllegalStateException ex) {
         log.warn("Business rule violation: {}", ex.getMessage());
@@ -54,6 +65,16 @@ public class GlobalExceptionHandler {
         problem.setTitle("Operation Not Allowed");
         problem.setType(URI.create("https://taskbridge.io/errors/conflict"));
         problem.setDetail(ex.getMessage());
+        return problem;
+    }
+
+    @ExceptionHandler({OptimisticLockException.class, ObjectOptimisticLockingFailureException.class})
+    public ProblemDetail handleOptimisticLock(Exception ex) {
+        log.warn("Concurrent update conflict: {}", ex.getMessage());
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.CONFLICT);
+        problem.setTitle("Concurrency Conflict");
+        problem.setType(URI.create("https://taskbridge.io/errors/concurrency-conflict"));
+        problem.setDetail("The resource was modified by another request. Please retry.");
         return problem;
     }
 

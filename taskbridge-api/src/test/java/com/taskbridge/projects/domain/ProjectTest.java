@@ -70,5 +70,74 @@ class ProjectTest {
         Project project = Project.create(tenantId, UUID.randomUUID(), "P", null, "u");
         assertThat(project.getTenantId()).isEqualTo(tenantId);
     }
+
+    @Test
+    void should_trimAndNormalizeFields_when_projectCreated() {
+        Project project = Project.create(
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            "  Test Project  ",
+            "   Description   ",
+            "  user@example.com  "
+        );
+
+        assertThat(project.getName()).isEqualTo("Test Project");
+        assertThat(project.getDescription()).isEqualTo("Description");
+        assertThat(project.getCreatedBy()).isEqualTo("user@example.com");
+    }
+
+    @Test
+    void should_storeNullDescription_when_optionalDescriptionIsBlank() {
+        Project project = Project.create(
+            UUID.randomUUID(), UUID.randomUUID(), "Test Project", "   ", "user@example.com"
+        );
+
+        assertThat(project.getDescription()).isNull();
+    }
+
+    @Test
+    void should_throwException_when_nameIsBlankOnCreate() {
+        assertThatThrownBy(() -> Project.create(
+            UUID.randomUUID(), UUID.randomUUID(), "   ", null, "user@example.com"
+        )).isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("name must not be blank");
+    }
+
+    @Test
+    void should_throwException_when_teamIdIsNullOnCreate() {
+        assertThatThrownBy(() -> Project.create(
+            UUID.randomUUID(), null, "Test Project", null, "user@example.com"
+        )).isInstanceOf(NullPointerException.class)
+          .hasMessageContaining("teamId must not be null");
+    }
+
+    @Test
+    void should_throwException_when_descriptionExceedsMaxLength() {
+        String longDescription = "x".repeat(2001);
+
+        assertThatThrownBy(() -> Project.create(
+            UUID.randomUUID(), UUID.randomUUID(), "Test Project", longDescription, "user@example.com"
+        )).isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("description must not exceed 2000 characters");
+    }
+
+    @Test
+    void should_throwException_when_statusIsNullOnUpdate() {
+        Project project = newDraftProject();
+
+        assertThatThrownBy(() -> project.updateStatus(null))
+            .isInstanceOf(NullPointerException.class)
+            .hasMessageContaining("newStatus must not be null");
+    }
+
+    @Test
+    void should_trimAndNormalizeDescription_when_projectUpdated() {
+        Project project = newDraftProject();
+
+        project.update("  New Name  ", "   ");
+
+        assertThat(project.getName()).isEqualTo("New Name");
+        assertThat(project.getDescription()).isNull();
+    }
 }
 

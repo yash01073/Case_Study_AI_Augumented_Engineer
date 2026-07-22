@@ -9,9 +9,13 @@ CREATE TABLE projects
     created_by  VARCHAR(255)                NOT NULL,
     created_at  TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
     updated_at  TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
+    version     BIGINT                      NOT NULL DEFAULT 0,
 
     CONSTRAINT pk_projects PRIMARY KEY (id),
-    CONSTRAINT chk_projects_status CHECK (status IN ('DRAFT', 'ACTIVE', 'ON_HOLD', 'COMPLETED', 'ARCHIVED', 'CANCELLED'))
+    CONSTRAINT chk_projects_status CHECK (status IN ('DRAFT', 'ACTIVE', 'ON_HOLD', 'COMPLETED', 'ARCHIVED', 'CANCELLED')),
+    CONSTRAINT chk_projects_name_not_blank CHECK (btrim(name) <> ''),
+    CONSTRAINT chk_projects_created_by_not_blank CHECK (btrim(created_by) <> ''),
+    CONSTRAINT chk_projects_description_length CHECK (char_length(description) <= 2000)
 );
 
 -- Tenant-scoped lookups

@@ -119,7 +119,7 @@ class ProjectServiceImplTest {
         var p1 = Project.create(tenantId, teamId, "P1", null, "user");
         var p2 = Project.create(tenantId, teamId, "P2", null, "user");
 
-        when(projectRepository.findAllByTenantIdAndTeamId(tenantId, teamId))
+        when(projectRepository.findAllByTenantIdAndTeamIdOrderByCreatedAtDesc(tenantId, teamId))
             .thenReturn(List.of(p1, p2));
 
         List<ProjectResponse> results = projectService.getByTeam(tenantId, teamId);
@@ -130,7 +130,7 @@ class ProjectServiceImplTest {
 
     @Test
     void should_returnEmptyList_when_teamHasNoProjects() {
-        when(projectRepository.findAllByTenantIdAndTeamId(tenantId, teamId))
+        when(projectRepository.findAllByTenantIdAndTeamIdOrderByCreatedAtDesc(tenantId, teamId))
             .thenReturn(List.of());
 
         List<ProjectResponse> results = projectService.getByTeam(tenantId, teamId);
@@ -171,13 +171,33 @@ class ProjectServiceImplTest {
     void should_neverReturnProjects_when_tenantDoesNotOwnTeam() {
         UUID anotherTenant = UUID.randomUUID();
 
-        when(projectRepository.findAllByTenantIdAndTeamId(anotherTenant, teamId))
+        when(projectRepository.findAllByTenantIdAndTeamIdOrderByCreatedAtDesc(anotherTenant, teamId))
             .thenReturn(List.of());
 
         List<ProjectResponse> results = projectService.getByTeam(anotherTenant, teamId);
 
         assertThat(results).isEmpty();
-        verify(projectRepository).findAllByTenantIdAndTeamId(anotherTenant, teamId);
+        verify(projectRepository).findAllByTenantIdAndTeamIdOrderByCreatedAtDesc(anotherTenant, teamId);
+    }
+
+    @Test
+    void should_throwIllegalArgument_when_createdByIsBlank() {
+        var request = new CreateProjectRequest(teamId, "Test Project", "Description");
+
+        assertThatThrownBy(() -> projectService.create(tenantId, "   ", request))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("createdBy must not be blank");
+
+        verify(projectRepository, never()).save(any(Project.class));
+    }
+
+    @Test
+    void should_throwNullPointer_when_teamIdIsNullForQuery() {
+        assertThatThrownBy(() -> projectService.getByTeam(tenantId, null))
+            .isInstanceOf(NullPointerException.class)
+            .hasMessageContaining("teamId must not be null");
+
+        verify(projectRepository, never()).findAllByTenantIdAndTeamIdOrderByCreatedAtDesc(any(), any());
     }
 }
 

@@ -40,16 +40,16 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain chain) throws ServletException, IOException {
-        String header = request.getHeader("Authorization");
-
-        if (header == null || !header.startsWith(BEARER_PREFIX)) {
-            chain.doFilter(request, response);
-            return;
-        }
-
-        String token = header.substring(BEARER_PREFIX.length());
-
         try {
+            String header = request.getHeader("Authorization");
+
+            if (header == null || !header.startsWith(BEARER_PREFIX)) {
+                chain.doFilter(request, response);
+                return;
+            }
+
+            String token = header.substring(BEARER_PREFIX.length());
+
             Claims claims  = jwtService.validateAndExtract(token);
             String subject = jwtService.extractSubject(claims);
             UUID tenantId  = jwtService.extractTenantId(claims);
@@ -63,12 +63,14 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 subject, null, List.of(new SimpleGrantedAuthority("ROLE_USER")));
             SecurityContextHolder.getContext().setAuthentication(auth);
 
+            chain.doFilter(request, response);
+
         } catch (JwtException | IllegalArgumentException ex) {
             log.warn("JWT validation failed: {}", ex.getMessage());
             SecurityContextHolder.clearContext();
             TenantContext.clear();
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid authentication token");
         } finally {
-            chain.doFilter(request, response);
             TenantContext.clear();
             MDC.remove("tenantId");
             MDC.remove("userId");

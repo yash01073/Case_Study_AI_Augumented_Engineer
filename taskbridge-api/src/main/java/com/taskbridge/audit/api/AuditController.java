@@ -60,7 +60,7 @@ public class AuditController {
         UUID organizationId = TenantContext.requireTenantId();
 
         List<AuditEntryResponse> response = auditService
-            .getHistory(new AuditHistoryQuery(organizationId, projectId, null))
+            .getHistory(new AuditHistoryQuery(organizationId, projectId, null, null, null))
             .stream()
             .map(auditApiMapper::toResponse)
             .toList();

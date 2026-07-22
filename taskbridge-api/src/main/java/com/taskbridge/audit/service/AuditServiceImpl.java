@@ -61,13 +61,21 @@ public class AuditServiceImpl implements AuditService {
         log.debug("Audit action=query_history outcome=attempt organization={} eventType={}",
             query.organizationId(), query.eventType());
 
-        return (query.projectId() != null
+        var rows = (query.projectId() != null
             ? auditEntryRepository.findAllByOrganizationIdAndProjectIdOrderByOccurredAtDesc(
                 query.organizationId(), query.projectId())
-            : query.eventType() == null
-                ? auditEntryRepository.findAllByOrganizationIdOrderByOccurredAtDesc(query.organizationId())
-                : auditEntryRepository.findAllByOrganizationIdAndEventTypeOrderByOccurredAtDesc(
-                    query.organizationId(), query.eventType()))
+            : query.from() != null && query.to() != null
+                ? query.eventType() == null
+                    ? auditEntryRepository.findAllByOrganizationIdAndOccurredAtBetweenOrderByOccurredAtDesc(
+                        query.organizationId(), query.from(), query.to())
+                    : auditEntryRepository.findAllByOrganizationIdAndEventTypeAndOccurredAtBetweenOrderByOccurredAtDesc(
+                        query.organizationId(), query.eventType(), query.from(), query.to())
+                : query.eventType() == null
+                    ? auditEntryRepository.findAllByOrganizationIdOrderByOccurredAtDesc(query.organizationId())
+                    : auditEntryRepository.findAllByOrganizationIdAndEventTypeOrderByOccurredAtDesc(
+                        query.organizationId(), query.eventType()));
+
+        return rows
             .stream()
             .map(auditEntryMapper::toView)
             .toList();

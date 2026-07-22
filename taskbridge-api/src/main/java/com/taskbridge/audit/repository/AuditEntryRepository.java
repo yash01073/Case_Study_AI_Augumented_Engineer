@@ -5,6 +5,7 @@ import com.taskbridge.audit.domain.AuditEventType;
 import org.springframework.data.repository.Repository;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -58,5 +59,35 @@ public interface AuditEntryRepository extends Repository<AuditEntry, UUID> {
      * @return matching immutable entries
      */
     List<AuditEntry> findAllByOrganizationIdAndEventTypeOrderByOccurredAtDesc(UUID organizationId, AuditEventType eventType);
+
+    /**
+     * Loads audit entries inside a tenant-scoped date range ordered by occurrence descending.
+     *
+     * @param organizationId owning organization identifier
+     * @param from start timestamp (inclusive)
+     * @param to end timestamp (inclusive)
+     * @return matching immutable entries
+     */
+    List<AuditEntry> findAllByOrganizationIdAndOccurredAtBetweenOrderByOccurredAtDesc(
+        UUID organizationId,
+        Instant from,
+        Instant to
+    );
+
+    /**
+     * Loads tenant-scoped and event-filtered audit entries inside a date range ordered by occurrence descending.
+     *
+     * @param organizationId owning organization identifier
+     * @param eventType event type filter
+     * @param from start timestamp (inclusive)
+     * @param to end timestamp (inclusive)
+     * @return matching immutable entries
+     */
+    List<AuditEntry> findAllByOrganizationIdAndEventTypeAndOccurredAtBetweenOrderByOccurredAtDesc(
+        UUID organizationId,
+        AuditEventType eventType,
+        Instant from,
+        Instant to
+    );
 }
 

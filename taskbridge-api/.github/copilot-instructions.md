@@ -107,3 +107,15 @@
 - Security: `Spring Security + JWT`
 - Testing: `JUnit 5 + Mockito`
 
+## Human Review Adjustments
+
+Added mandatory organization-level filtering requirements.
+
+Added DTO-only API exposure requirement.
+
+Added audit logging expectations.
+
+Added JavaDoc requirements for public methods.
+
+These requirements were missing or insufficiently detailed in the AI-generated version.
+

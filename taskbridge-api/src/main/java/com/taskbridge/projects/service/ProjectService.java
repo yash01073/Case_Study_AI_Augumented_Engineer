@@ -1,61 +1,60 @@
 package com.taskbridge.projects.service;
 
-import com.taskbridge.projects.dto.*;
+import com.taskbridge.projects.service.command.CreateProjectCommand;
+import com.taskbridge.projects.service.command.DeleteProjectCommand;
+import com.taskbridge.projects.service.command.UpdateProjectCommand;
+import com.taskbridge.projects.service.command.UpdateProjectStatusCommand;
+import com.taskbridge.projects.service.query.GetProjectsByTeamQuery;
+import com.taskbridge.projects.service.result.ProjectView;
 
 import java.util.List;
-import java.util.UUID;
 
 /**
  * Application-level contract for project operations.
- * All methods are tenant-scoped; callers must supply tenantId derived from JWT.
+ * <p>
+ * This service is transport-neutral: callers provide validated application
+ * commands and queries, and receive immutable application views.
+ * </p>
  */
 public interface ProjectService {
 
     /**
-     * Creates a new project for the given tenant.
+     * Creates a new project.
      *
-     * @param tenantId  tenant context from JWT
-     * @param createdBy subject claim from JWT
-     * @param request   validated creation payload
-     * @return the persisted project as a response DTO
+     * @param command validated create command
+     * @return the persisted project as an application view
      */
-    ProjectResponse create(UUID tenantId, String createdBy, CreateProjectRequest request);
+    ProjectView create(CreateProjectCommand command);
 
     /**
-     * Updates mutable fields (name, description) of an existing project.
+     * Updates mutable fields of an existing project.
      *
-     * @param tenantId  tenant context from JWT
-     * @param projectId target project ID
-     * @param request   validated update payload
-     * @return updated project as a response DTO
+     * @param command validated update command
+     * @return updated project as an application view
      */
-    ProjectResponse update(UUID tenantId, UUID projectId, UpdateProjectRequest request);
+    ProjectView update(UpdateProjectCommand command);
 
     /**
      * Transitions a project to a new lifecycle status.
      *
-     * @param tenantId  tenant context from JWT
-     * @param projectId target project ID
-     * @param request   desired status
-     * @return updated project as a response DTO
+     * @param command validated status transition command
+     * @return updated project as an application view
      */
-    ProjectResponse updateStatus(UUID tenantId, UUID projectId, UpdateProjectStatusRequest request);
+    ProjectView updateStatus(UpdateProjectStatusCommand command);
 
     /**
      * Returns all projects belonging to the given team, scoped to tenant.
      *
-     * @param tenantId tenant context from JWT
-     * @param teamId   target team
-     * @return list of projects (may be empty)
+     * @param query validated team query
+     * @return list of application views (may be empty)
      */
-    List<ProjectResponse> getByTeam(UUID tenantId, UUID teamId);
+    List<ProjectView> getByTeam(GetProjectsByTeamQuery query);
 
     /**
      * Permanently deletes a project. Validates tenant ownership before deletion.
      *
-     * @param tenantId  tenant context from JWT
-     * @param projectId target project ID
+     * @param command validated delete command
      */
-    void delete(UUID tenantId, UUID projectId);
+    void delete(DeleteProjectCommand command);
 }
 

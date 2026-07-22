@@ -1,5 +1,7 @@
 package com.taskbridge.security;
 
+import com.taskbridge.common.exception.UnauthorizedTenantContextException;
+
 import java.util.UUID;
 
 /**
@@ -22,7 +24,7 @@ public final class TenantContext {
     public static UUID requireTenantId() {
         UUID id = TENANT.get();
         if (id == null) {
-            throw new IllegalStateException("No tenant context present — request must be authenticated");
+            throw new UnauthorizedTenantContextException("No tenant context present — request must be authenticated");
         }
         return id;
     }
@@ -30,7 +32,7 @@ public final class TenantContext {
     public static String requireUserId() {
         String id = USER.get();
         if (id == null) {
-            throw new IllegalStateException("No user context present — request must be authenticated");
+            throw new UnauthorizedTenantContextException("No user context present — request must be authenticated");
         }
         return id;
     }

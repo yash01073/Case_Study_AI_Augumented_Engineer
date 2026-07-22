@@ -1,8 +1,13 @@
 package com.taskbridge.projects.service;
 
 import com.taskbridge.projects.domain.Project;
-import com.taskbridge.projects.dto.*;
 import com.taskbridge.projects.repository.ProjectRepository;
+import com.taskbridge.projects.service.command.CreateProjectCommand;
+import com.taskbridge.projects.service.command.DeleteProjectCommand;
+import com.taskbridge.projects.service.command.UpdateProjectCommand;
+import com.taskbridge.projects.service.command.UpdateProjectStatusCommand;
+import com.taskbridge.projects.service.query.GetProjectsByTeamQuery;
+import com.taskbridge.projects.service.result.ProjectView;
 import jakarta.persistence.EntityNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,9 +15,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 
+/**
+ * Default application service for tenant-scoped project operations.
+ * <p>
+ * This service owns transaction boundaries, structured business logging, and
+ * tenant-aware repository access for the Project aggregate.
+ * </p>
+ */
 @Service
 @Transactional
 public class ProjectServiceImpl implements ProjectService {
@@ -20,109 +31,90 @@ public class ProjectServiceImpl implements ProjectService {
     private static final Logger log = LoggerFactory.getLogger(ProjectServiceImpl.class);
 
     private final ProjectRepository projectRepository;
+    private final ProjectMapper projectMapper;
 
-    public ProjectServiceImpl(ProjectRepository projectRepository) {
+    public ProjectServiceImpl(ProjectRepository projectRepository, ProjectMapper projectMapper) {
         this.projectRepository = projectRepository;
+        this.projectMapper = projectMapper;
     }
 
-    // ---- Create ----------------------------------------------------------
-
     @Override
-    public ProjectResponse create(UUID tenantId, String createdBy, CreateProjectRequest request) {
-        requireTenantId(tenantId);
-        requireUserId(createdBy);
-        Objects.requireNonNull(request, "request must not be null");
+    public ProjectView create(CreateProjectCommand command) {
+        validate(command);
 
         log.info("Creating project for tenant={} team={} by={}",
-                 tenantId, request.teamId(), createdBy);
+                 command.tenantId(), command.teamId(), command.createdBy());
 
         Project project = Project.create(
-            tenantId,
-            request.teamId(),
-            request.name(),
-            request.description(),
-            createdBy
+            command.tenantId(),
+            command.teamId(),
+            command.name(),
+            command.description(),
+            command.createdBy()
         );
 
         Project saved = projectRepository.save(project);
         log.info("Project action=create outcome=success id={} tenant={} team={} by={}",
-                 saved.getId(), tenantId, saved.getTeamId(), saved.getCreatedBy());
-        return ProjectResponse.from(saved);
+                 saved.getId(), command.tenantId(), saved.getTeamId(), saved.getCreatedBy());
+        return projectMapper.toView(saved);
     }
 
-    // ---- Update (fields) -------------------------------------------------
-
     @Override
-    public ProjectResponse update(UUID tenantId, UUID projectId, UpdateProjectRequest request) {
-        requireTenantId(tenantId);
-        requireProjectId(projectId);
-        Objects.requireNonNull(request, "request must not be null");
+    public ProjectView update(UpdateProjectCommand command) {
+        validate(command);
 
-        log.info("Updating project id={} tenant={}", projectId, tenantId);
+        log.info("Updating project id={} tenant={}", command.projectId(), command.tenantId());
 
-        Project project = findOwnedProject(tenantId, projectId);
-        project.update(request.name(), request.description());
+        Project project = findOwnedProject(command.tenantId(), command.projectId());
+        project.update(command.name(), command.description());
 
         Project saved = projectRepository.save(project);
         log.info("Project action=update outcome=success id={} tenant={} team={}",
-                 saved.getId(), tenantId, saved.getTeamId());
-        return ProjectResponse.from(saved);
+                 saved.getId(), command.tenantId(), saved.getTeamId());
+        return projectMapper.toView(saved);
     }
 
-    // ---- Update status ---------------------------------------------------
-
     @Override
-    public ProjectResponse updateStatus(UUID tenantId, UUID projectId,
-                                        UpdateProjectStatusRequest request) {
-        requireTenantId(tenantId);
-        requireProjectId(projectId);
-        Objects.requireNonNull(request, "request must not be null");
+    public ProjectView updateStatus(UpdateProjectStatusCommand command) {
+        validate(command);
 
         log.info("Updating status of project id={} tenant={} to={}",
-                 projectId, tenantId, request.status());
+                 command.projectId(), command.tenantId(), command.status());
 
-        Project project = findOwnedProject(tenantId, projectId);
-        project.updateStatus(request.status());
+        Project project = findOwnedProject(command.tenantId(), command.projectId());
+        project.updateStatus(command.status());
 
         Project saved = projectRepository.save(project);
         log.info("Project action=update_status outcome=success id={} tenant={} status={}",
-                 saved.getId(), tenantId, saved.getStatus());
-        return ProjectResponse.from(saved);
+                 saved.getId(), command.tenantId(), saved.getStatus());
+        return projectMapper.toView(saved);
     }
-
-    // ---- Get by team -----------------------------------------------------
 
     @Override
     @Transactional(readOnly = true)
-    public List<ProjectResponse> getByTeam(UUID tenantId, UUID teamId) {
-        requireTenantId(tenantId);
-        requireTeamId(teamId);
+    public List<ProjectView> getByTeam(GetProjectsByTeamQuery query) {
+        validate(query);
 
-        log.debug("Fetching projects for tenant={} team={}", tenantId, teamId);
+        log.debug("Fetching projects for tenant={} team={}", query.tenantId(), query.teamId());
 
         return projectRepository
-            .findAllByTenantIdAndTeamIdOrderByCreatedAtDesc(tenantId, teamId)
+            .findAllByTenantIdAndTeamIdOrderByCreatedAtDesc(query.tenantId(), query.teamId())
             .stream()
-            .map(ProjectResponse::from)
+            .map(projectMapper::toView)
             .toList();
     }
 
-    // ---- Delete ----------------------------------------------------------
-
     @Override
-    public void delete(UUID tenantId, UUID projectId) {
-        requireTenantId(tenantId);
-        requireProjectId(projectId);
+    public void delete(DeleteProjectCommand command) {
+        validate(command);
 
-        log.info("Deleting project id={} tenant={}", projectId, tenantId);
+        log.info("Deleting project id={} tenant={}", command.projectId(), command.tenantId());
 
-        Project project = findOwnedProject(tenantId, projectId);
+        Project project = findOwnedProject(command.tenantId(), command.projectId());
         projectRepository.delete(project);
         log.info("Project action=delete outcome=success id={} tenant={} team={}",
-                 projectId, tenantId, project.getTeamId());
+                 command.projectId(), command.tenantId(), project.getTeamId());
     }
-
-    // ---- Internal helpers -----------------------------------------------
 
     /**
      * Loads the project and asserts it belongs to the current tenant.
@@ -138,21 +130,33 @@ public class ProjectServiceImpl implements ProjectService {
             });
     }
 
-    private static void requireTenantId(UUID tenantId) {
-        Objects.requireNonNull(tenantId, "tenantId must not be null");
+    private static void validate(CreateProjectCommand command) {
+        if (command == null) {
+            throw new IllegalArgumentException("command must not be null");
+        }
     }
 
-    private static void requireProjectId(UUID projectId) {
-        Objects.requireNonNull(projectId, "projectId must not be null");
+    private static void validate(UpdateProjectCommand command) {
+        if (command == null) {
+            throw new IllegalArgumentException("command must not be null");
+        }
     }
 
-    private static void requireTeamId(UUID teamId) {
-        Objects.requireNonNull(teamId, "teamId must not be null");
+    private static void validate(UpdateProjectStatusCommand command) {
+        if (command == null) {
+            throw new IllegalArgumentException("command must not be null");
+        }
     }
 
-    private static void requireUserId(String userId) {
-        if (userId == null || userId.trim().isEmpty()) {
-            throw new IllegalArgumentException("createdBy must not be blank");
+    private static void validate(GetProjectsByTeamQuery query) {
+        if (query == null) {
+            throw new IllegalArgumentException("query must not be null");
+        }
+    }
+
+    private static void validate(DeleteProjectCommand command) {
+        if (command == null) {
+            throw new IllegalArgumentException("command must not be null");
         }
     }
 }

@@ -15,3 +15,11 @@ The generated code had not been evaluated for:
 
 This review was deferred to the Project Service Review phase.
 
+### Human Modification
+
+Copilot generated repository queries without consistent organization filtering.
+
+All repository methods were updated to enforce tenant isolation.
+
+Reason:
+Cross-tenant access is unacceptable in a B2B SaaS environment.

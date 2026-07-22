@@ -1,5 +1,6 @@
 package com.taskbridge.common.api;
 
+import com.taskbridge.common.exception.UnauthorizedTenantContextException;
 import jakarta.persistence.OptimisticLockException;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -31,6 +32,17 @@ class GlobalExceptionHandlerTest {
         assertThat(problem.getStatus()).isEqualTo(HttpStatus.CONFLICT.value());
         assertThat(problem.getTitle()).isEqualTo("Concurrency Conflict");
         assertThat(problem.getDetail()).contains("modified by another request");
+    }
+
+    @Test
+    void should_returnUnauthorized_when_tenantContextIsMissing() {
+        ProblemDetail problem = handler.handleUnauthorizedContext(
+            new UnauthorizedTenantContextException("No tenant context present — request must be authenticated")
+        );
+
+        assertThat(problem.getStatus()).isEqualTo(HttpStatus.UNAUTHORIZED.value());
+        assertThat(problem.getTitle()).isEqualTo("Unauthorized");
+        assertThat(problem.getDetail()).contains("No tenant context present");
     }
 }
 

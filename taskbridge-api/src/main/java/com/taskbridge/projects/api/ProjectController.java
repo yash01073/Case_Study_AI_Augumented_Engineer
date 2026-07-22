@@ -2,6 +2,8 @@ package com.taskbridge.projects.api;
 
 import com.taskbridge.projects.dto.*;
 import com.taskbridge.projects.service.ProjectService;
+import com.taskbridge.projects.service.command.DeleteProjectCommand;
+import com.taskbridge.projects.service.query.GetProjectsByTeamQuery;
 import com.taskbridge.security.TenantContext;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -20,9 +22,11 @@ import java.util.UUID;
 public class ProjectController {
 
     private final ProjectService projectService;
+    private final ProjectApiMapper projectApiMapper;
 
-    public ProjectController(ProjectService projectService) {
+    public ProjectController(ProjectService projectService, ProjectApiMapper projectApiMapper) {
         this.projectService = projectService;
+        this.projectApiMapper = projectApiMapper;
     }
 
     /**
@@ -35,7 +39,9 @@ public class ProjectController {
     ) {
         UUID tenantId  = TenantContext.requireTenantId();
         String userId  = TenantContext.requireUserId();
-        ProjectResponse response = projectService.create(tenantId, userId, request);
+        ProjectResponse response = projectApiMapper.toResponse(
+            projectService.create(projectApiMapper.toCreateCommand(tenantId, userId, request))
+        );
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -49,7 +55,9 @@ public class ProjectController {
         @Valid @RequestBody UpdateProjectRequest request
     ) {
         UUID tenantId = TenantContext.requireTenantId();
-        return ResponseEntity.ok(projectService.update(tenantId, id, request));
+        return ResponseEntity.ok(projectApiMapper.toResponse(
+            projectService.update(projectApiMapper.toUpdateCommand(tenantId, id, request))
+        ));
     }
 
     /**
@@ -62,7 +70,9 @@ public class ProjectController {
         @Valid @RequestBody UpdateProjectStatusRequest request
     ) {
         UUID tenantId = TenantContext.requireTenantId();
-        return ResponseEntity.ok(projectService.updateStatus(tenantId, id, request));
+        return ResponseEntity.ok(projectApiMapper.toResponse(
+            projectService.updateStatus(projectApiMapper.toUpdateStatusCommand(tenantId, id, request))
+        ));
     }
 
     /**
@@ -74,7 +84,12 @@ public class ProjectController {
         @RequestParam UUID teamId
     ) {
         UUID tenantId = TenantContext.requireTenantId();
-        return ResponseEntity.ok(projectService.getByTeam(tenantId, teamId));
+        return ResponseEntity.ok(
+            projectService.getByTeam(new GetProjectsByTeamQuery(tenantId, teamId))
+                .stream()
+                .map(projectApiMapper::toResponse)
+                .toList()
+        );
     }
 
     /**
@@ -84,7 +99,7 @@ public class ProjectController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
         UUID tenantId = TenantContext.requireTenantId();
-        projectService.delete(tenantId, id);
+        projectService.delete(new DeleteProjectCommand(tenantId, id));
         return ResponseEntity.noContent().build();
     }
 }

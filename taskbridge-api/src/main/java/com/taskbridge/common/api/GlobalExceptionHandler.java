@@ -1,5 +1,6 @@
 package com.taskbridge.common.api;
 
+import com.taskbridge.common.exception.UnauthorizedTenantContextException;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.OptimisticLockException;
 import org.slf4j.Logger;
@@ -45,6 +46,16 @@ public class GlobalExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
         problem.setTitle("Resource Not Found");
         problem.setType(URI.create("https://taskbridge.io/errors/not-found"));
+        problem.setDetail(ex.getMessage());
+        return problem;
+    }
+
+    @ExceptionHandler(UnauthorizedTenantContextException.class)
+    public ProblemDetail handleUnauthorizedContext(UnauthorizedTenantContextException ex) {
+        log.warn("Unauthorized request context: {}", ex.getMessage());
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.UNAUTHORIZED);
+        problem.setTitle("Unauthorized");
+        problem.setType(URI.create("https://taskbridge.io/errors/unauthorized"));
         problem.setDetail(ex.getMessage());
         return problem;
     }

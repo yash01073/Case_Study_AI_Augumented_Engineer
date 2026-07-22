@@ -23,3 +23,9 @@ All repository methods were updated to enforce tenant isolation.
 
 Reason:
 Cross-tenant access is unacceptable in a B2B SaaS environment.
+
+### Human Modification
+
+Copilot initially generated standard CRUD patterns.
+
+Update and delete operations were removed from AuditEntry handling because compliance requirements require immutability.

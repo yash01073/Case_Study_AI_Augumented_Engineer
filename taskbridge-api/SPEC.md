@@ -719,3 +719,12 @@ These requirements were added manually.
 Audit records are treated as compliance data and therefore are immutable.
 
 Notification delivery failures do not block audit persistence.
+
+### Human Architectural Decision
+
+Audit writing is mandatory.
+
+Notification failures will be logged and retried separately.
+
+Reason:
+Compliance records are more critical than notification delivery.

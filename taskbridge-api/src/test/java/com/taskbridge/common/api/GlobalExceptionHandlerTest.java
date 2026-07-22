@@ -5,6 +5,8 @@ import jakarta.persistence.OptimisticLockException;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -43,6 +45,31 @@ class GlobalExceptionHandlerTest {
         assertThat(problem.getStatus()).isEqualTo(HttpStatus.UNAUTHORIZED.value());
         assertThat(problem.getTitle()).isEqualTo("Unauthorized");
         assertThat(problem.getDetail()).contains("No tenant context present");
+    }
+
+    @Test
+    void should_returnForbidden_when_accessDeniedOccurs() {
+        ProblemDetail problem = handler.handleAccessDenied(new AccessDeniedException("denied"));
+
+        assertThat(problem.getStatus()).isEqualTo(HttpStatus.FORBIDDEN.value());
+        assertThat(problem.getTitle()).isEqualTo("Forbidden");
+    }
+
+    @Test
+    void should_returnBadRequest_when_typeMismatchOccurs() {
+        MethodArgumentTypeMismatchException exception = new MethodArgumentTypeMismatchException(
+            "abc",
+            java.util.UUID.class,
+            "projectId",
+            null,
+            new IllegalArgumentException("bad uuid")
+        );
+
+        ProblemDetail problem = handler.handleTypeMismatch(exception);
+
+        assertThat(problem.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value());
+        assertThat(problem.getTitle()).isEqualTo("Invalid Request Parameter");
+        assertThat(problem.getDetail()).contains("projectId");
     }
 }
 
